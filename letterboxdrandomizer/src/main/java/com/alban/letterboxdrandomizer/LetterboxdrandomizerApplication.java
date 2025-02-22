@@ -7,10 +7,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -18,13 +15,16 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @SpringBootApplication
 @RestController
+@RequestMapping("/")
 public class LetterboxdrandomizerApplication {
 	private static final Set<Map<String, String>> global_watchlist = ConcurrentHashMap.newKeySet();
+	private static final Set<String> global_usernames = new HashSet<>();
 
 	public static void main(String[] args) {
 		SpringApplication.run(LetterboxdrandomizerApplication.class, args);
 	}
 
+	@CrossOrigin(origins = "http://localhost:3000")
 	@GetMapping("/randomizer")
 	public Map<String, String> randomizer() {
 		return get_random_movie_from_global();
@@ -48,9 +48,14 @@ public class LetterboxdrandomizerApplication {
 		Map<String, String> randomizer = watchlist.get(new Random().nextInt(watchlist.size()));
 		return randomizer;
 	}
-
+	@CrossOrigin(origins = "http://localhost:3000")
 	@PostMapping("/add-user")
 	public String add_user(@RequestParam String username) {
+		
+		if (global_usernames.contains(username)) {
+			return username + " already added.";
+		}
+
 		List<Map<String, String>> watchlist = get_watchlist(username);
 
 		if (watchlist.isEmpty()) {
@@ -58,7 +63,8 @@ public class LetterboxdrandomizerApplication {
 		}
 
 		global_watchlist.addAll(watchlist);
-		return "User " + username + "added.";
+		global_usernames.add(username);
+		return "User " + username + " added.";
 	}
 
 	public List<Map<String, String>> get_watchlist(String username) {
