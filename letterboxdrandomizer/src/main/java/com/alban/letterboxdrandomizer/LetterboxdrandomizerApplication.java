@@ -35,7 +35,9 @@ public class LetterboxdrandomizerApplication {
 		}
 
 		List<Map<String, String>> movie = new ArrayList<>(global_watchlist);
-		return movie.get(new Random().nextInt(movie.size()));
+		//return movie.get(new Random().nextInt(movie.size()));
+		Map<String, String> random_movie = movie.get(new Random().nextInt(movie.size()));
+		return fetch_movie_details(random_movie.get("link"));
 	}
 
 	@PostMapping("/get-random-movie-from-user")
@@ -48,10 +50,28 @@ public class LetterboxdrandomizerApplication {
 		Map<String, String> randomizer = watchlist.get(new Random().nextInt(watchlist.size()));
 		return randomizer;
 	}
+
+	private Map<String, String> fetch_movie_details(String url) {
+		Map<String, String> movie_details = new HashMap<>();
+
+		try {
+			Document doc = Jsoup.connect(url).userAgent("Mozilla/5.0").get();
+			movie_details.put("title", doc.select("h1.headline-1").text());
+			movie_details.put("year", doc.select("div.releaseyear").text());
+			movie_details.put("director", doc.select("span.directorlist").text());
+			String length_text = String.valueOf(doc.select("p.text-link").text().split(" ")[0]);
+			movie_details.put("length", length_text);
+			movie_details.put("link", url);
+
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		return movie_details;
+	}
 	@CrossOrigin(origins = "http://localhost:3000")
 	@PostMapping("/add-user")
 	public String add_user(@RequestParam String username) {
-		
+
 		if (global_usernames.contains(username)) {
 			return username + " already added.";
 		}
@@ -87,9 +107,11 @@ public class LetterboxdrandomizerApplication {
 
 				for (Element movie : movies) {
 					String title = movie.select("img").attr("alt");
+					String link = "https://letterboxd.com" + movie.select("div").attr("data-target-link");
 
 					Map<String,String> film = new HashMap<>();
 					film.put("title", title);
+					film.put("link", link);
 
 					movie_list.add(film);
 				}
@@ -103,6 +125,7 @@ public class LetterboxdrandomizerApplication {
 				throw new RuntimeException(e);
 			}
 		}
+		System.out.println(movie_list);
 		return new ArrayList<>(movie_list);
 	}
 

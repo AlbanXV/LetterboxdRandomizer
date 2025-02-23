@@ -11,7 +11,7 @@ function App() {
   const addUser = async () => {
     try {
       const response = await axios.post('http://localhost:8080/add-user', null, {params: { username },});
-      alert(response.data)
+      alert(response.data);
     } catch (err) {
       setError('Failed to add user.');
     }
@@ -34,18 +34,20 @@ function App() {
   };
   
   return (
-    <div>
-      <h1>Letterboxd Watchlist Randomizer</h1>
-      <p>Enter username:</p>
-      <input type="text" value={username} onChange={(e) => setUsername(e.target.value)}></input>
-      <button onClick={addUser}>Add user</button>
+    <div className='max-w-[1940px] ease-in-out text-white w-full h-screen mx-auto text-center'>
+      <h1 className='md:text-5xl py-4'>Letterboxd Watchlist Randomizer</h1>
+      <p className='md:text-2xl my-3'>Enter username:</p>
+      <input className='text-black rounded-full py-2 px-3 mx-2' type="text" value={username} onChange={(e) => setUsername(e.target.value)}></input>
+      <button className='bg-green-400 hover:bg-green-500 py-2 px-3 rounded-full' onClick={addUser}>Add user</button>
+      {error && <p className='my-2 text-red-400'>{error}</p>}
       <br />
-      <br />
-      <button onClick={getRandomMovie}>Get random movie</button>
-      {error && <p>{error}</p>}
+      <button className='bg-blue-400 hover:bg-blue-500 rounded-full py-2 px-3 my-3' onClick={getRandomMovie}>Get random movie</button>
       {movie && (
-        <div>
-          <p>{movie.title}</p>
+        <div className=' rounded-xl md:text-xl bg-linear-65 from-sky-500 to-indigo-500'>
+          <p>{movie.title} ({movie.year})</p>
+          <p>Director: {movie.director}</p>
+          <p>Movie length: {movie.length} mins</p>
+          <p>Link: <a className='text-blue-400 hover:text-blue-500' href={movie.link}>{movie.link}</a></p>
         </div>
       )}
     </div>
