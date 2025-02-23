@@ -18,7 +18,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequestMapping("/")
 public class LetterboxdrandomizerApplication {
 	private static final Set<Map<String, String>> global_watchlist = ConcurrentHashMap.newKeySet();
-	private static final Set<String> global_usernames = new HashSet<>();
+	private static final Map<String, Set<Map<String, String>>> user_watchlists = new ConcurrentHashMap<>();
+	//private static final Set<String> global_usernames = new HashSet<>();
 
 	public static void main(String[] args) {
 		SpringApplication.run(LetterboxdrandomizerApplication.class, args);
@@ -26,9 +27,15 @@ public class LetterboxdrandomizerApplication {
 
 	@CrossOrigin(origins = "http://localhost:3000")
 	@GetMapping("/randomizer")
+	// A class that selects a random movie from the list: global_watchlist
 	public Map<String, String> randomizer() {
 		return get_random_movie_from_global();
 	}
+
+	/**
+	 * A class that selects a random movie from the list: global_watchlist
+	 * @return fetch_movie_details() : function to get info about the selected random movie
+	 */
 	public Map<String, String> get_random_movie_from_global() {
 		if (global_watchlist.isEmpty()) {
 			return Collections.singletonMap("error", "empty list");
@@ -41,6 +48,11 @@ public class LetterboxdrandomizerApplication {
 	}
 
 	@PostMapping("/get-random-movie-from-user")
+	/**
+	 * A class to only fetch a random movie from a single user directly
+	 * @param username - String
+	 * @return randomizer (Map) that selects one random movie in the list
+	 */
 	public Map<String, String> get_random_movie_from_user(@RequestParam String username) {
 		List<Map<String, String>> watchlist = get_watchlist(username);
 
@@ -51,6 +63,11 @@ public class LetterboxdrandomizerApplication {
 		return randomizer;
 	}
 
+	/**
+	 * A class that fetches information about the selected movie through scraping
+	 * @param url - String
+	 * @return movie_details (HashMap) with details about the selected movie
+	 */
 	private Map<String, String> fetch_movie_details(String url) {
 		Map<String, String> movie_details = new HashMap<>();
 
@@ -68,11 +85,17 @@ public class LetterboxdrandomizerApplication {
 		}
 		return movie_details;
 	}
+
 	@CrossOrigin(origins = "http://localhost:3000")
 	@PostMapping("/add-user")
+	/**
+	 * A class that adds an arbitrary user and fetches their watchlist
+	 * @param username - String
+	 * @return the username that's been added to the list
+	 */
 	public String add_user(@RequestParam String username) {
 
-		if (global_usernames.contains(username)) {
+		if (user_watchlists.containsKey(username)) {
 			return username + " already added.";
 		}
 
@@ -83,10 +106,46 @@ public class LetterboxdrandomizerApplication {
 		}
 
 		global_watchlist.addAll(watchlist);
-		global_usernames.add(username);
+		//global_usernames.add(username);
+		user_watchlists.put(username, new HashSet<>(watchlist));
 		return "User " + username + " added.";
 	}
 
+	@CrossOrigin(origins = "http://localhost:3000")
+	@DeleteMapping("/delete-user")
+	/**
+	 * A class to delete an arbitrary user and their watchlist from the list
+	 * @param username - String
+	 * @return the username that's been deleted from the list
+	 */
+	public String delete_user(@RequestParam String username) {
+		if (user_watchlists.isEmpty()) {
+			return "There are no usernames in the list.";
+		}
+		if (!user_watchlists.containsKey(username)) {
+			return "Username " + username + " not found.";
+		}
+
+		Set<Map<String, String>> user_watchlist = user_watchlists.remove(username);
+		global_watchlist.removeAll(user_watchlist);
+
+		return "User " + username + "'s watchlist has been removed.";
+	}
+	@CrossOrigin(origins = "http://localhost:3000")
+	@GetMapping("/get-users")
+	/**
+	 * A class to get all users
+	 * @return all users (key values in dict/map)
+	 */
+	public Set<String> get_users() {
+		return user_watchlists.keySet();
+	}
+
+	/**
+	 * A class to fetch a user's watchlist through web scraping
+	 * @param username - String
+	 * @return new ArrayList with the list including all watchlist movies
+	 */
 	public List<Map<String, String>> get_watchlist(String username) {
 		String url = "https://letterboxd.com/" + username + "/watchlist/";
 		Set<Map<String, String>> movie_list = new HashSet<>();
