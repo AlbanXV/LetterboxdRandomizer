@@ -26,6 +26,7 @@ function App() {
     try {
       const response = await axios.post('http://localhost:8080/add-user', null, { params: { username },});
       alert(response.data);
+      
     } catch (err) {
       setError('Failed to add user.');
     }
