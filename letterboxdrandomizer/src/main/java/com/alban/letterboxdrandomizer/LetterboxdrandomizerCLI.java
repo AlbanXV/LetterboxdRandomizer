@@ -12,7 +12,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class LetterboxdrandomizerCLI {
     private static final Set<Map<String, String>> global_watchlist = ConcurrentHashMap.newKeySet();
-    private static final Set<Map<String, String>> global_custom_link = ConcurrentHashMap.newKeySet();
 
     // Terminal colors
     public static final String ANSI_RESET = "\u001B[0m";
