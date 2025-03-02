@@ -32,7 +32,8 @@ public class LetterboxdrandomizerCLI {
     }
 
     public static void display_menu() {
-        System.out.println("1. Search watchlist(s)\n2. Search custom list\n");
+        System.out.println("1. Search watchlist(s)\n2. Search custom list\n3. Feeling Lucky (All-time popular)\n");
+        String popular = "https://letterboxd.com/films/ajax/popular/";
 
         Scanner scanner = new Scanner(System.in);
         int input = scanner.nextInt();
@@ -44,6 +45,9 @@ public class LetterboxdrandomizerCLI {
             case 2:
                 customlistRandomizer();
                 break;
+            case 3:
+                fetchList(popular);
+                break;
             default:
                 System.out.println("Invalid input");
         }
@@ -53,10 +57,10 @@ public class LetterboxdrandomizerCLI {
         Scanner scanner = new Scanner(System.in);
         String input;
 
-        System.out.println("\nEnter url of user link");
+        System.out.println("\nEnter url of user list");
         input = scanner.nextLine().trim();
 
-        List<Map<String, String>> get_list = get_custom_list(input);
+        List<Map<String, String>> get_list = fetchList(input);
         System.out.println(get_list);
 
         System.out.println(ANSI_YELLOW + "******** RESULTS ********\n" + ANSI_RESET +
@@ -91,7 +95,7 @@ public class LetterboxdrandomizerCLI {
     }
 
     public static String add_user(String username) {
-        List<Map<String, String>> watchlist = get_watchlist(username);
+        List<Map<String, String>> watchlist = fetchList(username);
 
         if (watchlist.isEmpty()) {
             return ANSI_RED + "Failed to fetch " + username + "'s watchlist." + ANSI_RESET;
@@ -196,6 +200,79 @@ public class LetterboxdrandomizerCLI {
             }
         }
         System.out.println("Movies: " + movie_list);
+        return new ArrayList<>(movie_list);
+    }
+
+    public static List<Map<String, String>> fetchList(String input) {
+        String username = "";
+        String link = "";
+
+        if (input.contains("https://") && (input.contains("/list/") || input.contains("/popular/"))) {
+            link = input;
+            System.out.println("Link: " + link);
+        }
+        else {
+            username = input;
+        }
+
+        String url = "https://letterboxd.com/" + username + "/watchlist/";
+        Set<Map<String, String>> movie_list = new HashSet<>();
+        boolean hasNextPage = true;
+        int pages = 1;
+
+        if (!username.isEmpty()) {
+            System.out.println("Fetching: " + url + "\n");
+        }
+
+        if (!link.isEmpty()) {
+            System.out.println("Fetching: " + link + "\n");
+        }
+
+        while (hasNextPage) {
+            try {
+                Document doc = null;
+
+                if (link.isEmpty()) {
+                    doc = Jsoup.connect(url + "page/" + pages + "/").userAgent("Mozilla/5.0").get();
+                }
+                else if (link.contains("/popular/")) {
+                    doc = Jsoup.connect(link + "page/" + pages + "/?esiAllowFilters=true").userAgent("Mozilla/5.0").get();
+                }
+                else
+                {
+                    doc = Jsoup.connect(link + "page/" + pages + "/").userAgent("Mozilla/5.0").get();
+                }
+
+                Elements movies = doc.select("li.poster-container");
+
+                if (movies.isEmpty()) {
+                    System.out.println("User " + username + " has no movies.");
+                    break;
+                }
+
+                for (Element movie : movies) {
+                    String title = movie.select("img").attr("alt");
+
+                    Map<String,String> film = new HashMap<>();
+                    film.put("title", title);
+
+                    movie_list.add(film);
+                }
+
+                Elements pagination = doc.select("a.next");
+
+                if (link.contains("/popular/") && pages == 50) {
+                    break;
+                } else if (pagination.isEmpty()) {
+                    break;
+                }
+                pages++;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        System.out.println("Movies: " + movie_list);
+        System.out.println("Total movies: " + movie_list.size());
         return new ArrayList<>(movie_list);
     }
 }

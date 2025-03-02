@@ -188,4 +188,49 @@ public class LetterboxdrandomizerApplication {
 		return new ArrayList<>(movie_list);
 	}
 
+	/**
+	 * A class to fetch a user's custom link through web scraping
+	 * @param link - String
+	 * @return new ArrayList with the list including all custom / user link movies
+	 */
+	public static List<Map<String, String>> get_custom_list(String link) {
+		Set<Map<String, String>> movie_list = new HashSet<>();
+		boolean hasNextPage = true;
+		int pages = 1;
+
+		System.out.println("Fetching movie list: " + link);
+
+		while (hasNextPage) {
+			try {
+				Document doc = Jsoup.connect(link + "page/" + pages + "/").userAgent("Mozilla/5.0").get();
+				Elements movies = doc.select("li.poster-container");
+
+				if (movies.isEmpty()) {
+					System.out.println("List is empty");
+					break;
+				}
+
+				for (Element movie : movies) {
+					String title = movie.select("img").attr("alt");
+					Map<String, String> film = new HashMap<>();
+
+					film.put("title", title);
+
+					movie_list.add(film);
+				}
+
+				Elements pagination = doc.select("a.next");
+				if (pagination.isEmpty()) {
+					break;
+				}
+				pages++;
+
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+		System.out.println("Movies: " + movie_list);
+		return new ArrayList<>(movie_list);
+	}
+
 }
