@@ -19,7 +19,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class LetterboxdrandomizerApplication {
 	private static final Set<Map<String, String>> global_watchlist = ConcurrentHashMap.newKeySet();
 	private static final Map<String, Set<Map<String, String>>> user_watchlists = new ConcurrentHashMap<>();
-	//private static final Set<String> global_usernames = new HashSet<>();
 	private static final List<Map<String, String>> global_popular = new ArrayList<>(); // avoid scraping every time
 
 	public static void main(String[] args) {
@@ -43,7 +42,6 @@ public class LetterboxdrandomizerApplication {
 		}
 
 		List<Map<String, String>> movie = new ArrayList<>(global_watchlist);
-		//return movie.get(new Random().nextInt(movie.size()));
 		Map<String, String> random_movie = movie.get(new Random().nextInt(movie.size()));
 		return fetch_movie_details(random_movie.get("link"));
 	}
