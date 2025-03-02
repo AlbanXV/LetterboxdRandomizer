@@ -3,37 +3,12 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 
 function Popularlist() {
-  const [username, setUsername] = useState('');
-  const [users, setUsers] = useState([]);
   const [movie, setMovie] = useState(null);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    try {
-      const response = await axios.get('http://localhost:8080/get-users');
-      setUsers(response.data);
-    } catch (err) {
-      setError('Failed to fetch users.');
-    }
-  };
-
-  const addUser = async () => {
-    try {
-      const response = await axios.post('http://localhost:8080/add-user', null, { params: { username },});
-      alert(response.data);
-      
-    } catch (err) {
-      setError('Failed to add user.');
-    }
-  };
-
   const getRandomMovie = async () => {
     try {
-      const response = await axios.get('http://localhost:8080/randomizer');
+      const response = await axios.get('http://localhost:8080/get_random_popular');
       if (response.data.error) {
         setError(response.data.error);
         setMovie(null);
@@ -44,16 +19,6 @@ function Popularlist() {
       }
     } catch (err) {
       setError('Failed to fetch random movie.');
-    }
-  };
-
-  const deleteUser = async (user) => {
-    try {
-      await axios.delete('http://localhost:8080/delete-user', { params: { username: user }});
-      fetchUsers();
-
-    } catch (err) {
-      setError('Failed to delete user.');
     }
   };
   

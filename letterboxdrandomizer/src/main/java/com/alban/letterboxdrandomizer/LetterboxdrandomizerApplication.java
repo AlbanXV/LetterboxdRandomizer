@@ -20,6 +20,7 @@ public class LetterboxdrandomizerApplication {
 	private static final Set<Map<String, String>> global_watchlist = ConcurrentHashMap.newKeySet();
 	private static final Map<String, Set<Map<String, String>>> user_watchlists = new ConcurrentHashMap<>();
 	//private static final Set<String> global_usernames = new HashSet<>();
+	private static final List<Map<String, String>> global_popular = new ArrayList<>(); // avoid scraping every time
 
 	public static void main(String[] args) {
 		SpringApplication.run(LetterboxdrandomizerApplication.class, args);
@@ -47,20 +48,41 @@ public class LetterboxdrandomizerApplication {
 		return fetch_movie_details(random_movie.get("link"));
 	}
 
-	@PostMapping("/get-random-movie-from-user")
+	@CrossOrigin(origins = "http://localhost:3000")
+	@GetMapping("/get_random_popular")
 	/**
-	 * A class to only fetch a random movie from a single user directly
-	 * @param username - String
-	 * @return randomizer (Map) that selects one random movie in the list
+	 * A class that selects a random movie by fetching the popular top 50 pages of all time
+	 * @return fetch_movie_details() : function to get info about the selected random movie
 	 */
-	public Map<String, String> get_random_movie_from_user(@RequestParam String username) {
-		List<Map<String, String>> watchlist = get_watchlist(username);
+	public Map<String, String> get_random_popular() {
+		String popular = "https://letterboxd.com/films/ajax/popular/";
 
-		if (watchlist.isEmpty()) {
-			return Collections.singletonMap("error", "no movies found");
+		// avoid web-scraping every time
+		if (global_popular.isEmpty()) {
+			List<Map<String, String>> get_list = fetchList(popular);
+			global_popular.addAll(get_list);
 		}
-		Map<String, String> randomizer = watchlist.get(new Random().nextInt(watchlist.size()));
-		return randomizer;
+
+		Map<String, String> random_movie = global_popular.get(new Random().nextInt(global_popular.size()));
+		return fetch_movie_details(random_movie.get("link"));
+	}
+
+	@CrossOrigin(origins = "http://localhost:3000")
+	@PostMapping("/get_random_from_cList")
+	/**
+	 * A class that selects a random movie from a custom list url
+	 * @param url - String
+	 * @return fetch_movie_details() : function to get info about the selected random movie
+	 */
+	public Map<String, String> get_random_from_cList(@RequestParam String url) {
+		if (url.isEmpty()) {
+			return Collections.singletonMap("error", "empty list");
+		}
+
+		List<Map<String, String>> get_list = fetchList(url);
+
+		Map<String, String> random_movie = get_list.get(new Random().nextInt(get_list.size()));
+		return fetch_movie_details(random_movie.get("link"));
 	}
 
 	/**
@@ -99,7 +121,7 @@ public class LetterboxdrandomizerApplication {
 			return username + " already added.";
 		}
 
-		List<Map<String, String>> watchlist = get_watchlist(username);
+		List<Map<String, String>> watchlist = fetchList(username);
 
 		if (watchlist.isEmpty()) {
 			return "Failed to fetch " + username + "'s watchlist.";
@@ -142,21 +164,49 @@ public class LetterboxdrandomizerApplication {
 	}
 
 	/**
-	 * A class to fetch a user's watchlist through web scraping
-	 * @param username - String
-	 * @return new ArrayList with the list including all watchlist movies
+	 * A class to scrape and fetch movies from either users' watchlist, custom list or all-time popular page (limit 50 pages)
+	 * @param input - String
+	 * @return new ArrayList with the list including all custom / user link movies
 	 */
-	public List<Map<String, String>> get_watchlist(String username) {
-		String url = "https://letterboxd.com/" + username + "/watchlist/";
+	public List<Map<String, String>> fetchList(String input) {
+		String username = "";
+		String link = "";
+
+		if (input.contains("https://") && (input.contains("/list/") || input.contains("/popular/"))) {
+			link = input;
+			System.out.println("Link: " + link);
+		}
+		else {
+			username = input;
+		}
+
+		String user_url = "https://letterboxd.com/" + username + "/watchlist/";
 		Set<Map<String, String>> movie_list = new HashSet<>();
 		boolean hasNextPage = true;
 		int pages = 1;
 
-		System.out.println("Fetching: " + url + "\n");
+		if (!username.isEmpty()) {
+			System.out.println("Fetching: " + user_url + "\n");
+		}
+
+		if (!link.isEmpty()) {
+			System.out.println("Fetching: " + link + "\n");
+		}
 
 		while (hasNextPage) {
 			try {
-				Document doc = Jsoup.connect(url + "page/" + pages + "/").userAgent("Mozilla/5.0").get();
+				Document doc = null;
+
+				if (link.isEmpty()) {
+					doc = Jsoup.connect(user_url + "page/" + pages + "/").userAgent("Mozilla/5.0").get();
+				}
+				else if (link.contains("/popular/")) {
+					doc = Jsoup.connect(link + "page/" + pages + "/?esiAllowFilters=true").userAgent("Mozilla/5.0").get();
+				}
+				else
+				{
+					doc = Jsoup.connect(link + "page/" + pages + "/").userAgent("Mozilla/5.0").get();
+				}
 				Elements movies = doc.select("li.poster-container");
 
 				if (movies.isEmpty()) {
@@ -166,17 +216,19 @@ public class LetterboxdrandomizerApplication {
 
 				for (Element movie : movies) {
 					String title = movie.select("img").attr("alt");
-					String link = "https://letterboxd.com" + movie.select("div").attr("data-target-link");
+					String url = "https://letterboxd.com" + movie.select("div").attr("data-target-link");
 
 					Map<String,String> film = new HashMap<>();
 					film.put("title", title);
-					film.put("link", link);
+					film.put("link", url);
 
 					movie_list.add(film);
 				}
 
 				Elements pagination = doc.select("a.next");
-				if (pagination.isEmpty()) {
+				if (link.contains("/popular/") && pages == 50) {
+					break;
+				} else if (pagination.isEmpty()) {
 					break;
 				}
 				pages++;
@@ -185,51 +237,6 @@ public class LetterboxdrandomizerApplication {
 			}
 		}
 		System.out.println(movie_list);
-		return new ArrayList<>(movie_list);
-	}
-
-	/**
-	 * A class to fetch a user's custom link through web scraping
-	 * @param link - String
-	 * @return new ArrayList with the list including all custom / user link movies
-	 */
-	public static List<Map<String, String>> get_custom_list(String link) {
-		Set<Map<String, String>> movie_list = new HashSet<>();
-		boolean hasNextPage = true;
-		int pages = 1;
-
-		System.out.println("Fetching movie list: " + link);
-
-		while (hasNextPage) {
-			try {
-				Document doc = Jsoup.connect(link + "page/" + pages + "/").userAgent("Mozilla/5.0").get();
-				Elements movies = doc.select("li.poster-container");
-
-				if (movies.isEmpty()) {
-					System.out.println("List is empty");
-					break;
-				}
-
-				for (Element movie : movies) {
-					String title = movie.select("img").attr("alt");
-					Map<String, String> film = new HashMap<>();
-
-					film.put("title", title);
-
-					movie_list.add(film);
-				}
-
-				Elements pagination = doc.select("a.next");
-				if (pagination.isEmpty()) {
-					break;
-				}
-				pages++;
-
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-		}
-		System.out.println("Movies: " + movie_list);
 		return new ArrayList<>(movie_list);
 	}
 
