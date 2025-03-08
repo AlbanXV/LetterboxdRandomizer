@@ -126,7 +126,6 @@ public class LetterboxdrandomizerApplication {
 		}
 
 		global_watchlist.addAll(watchlist);
-		//global_usernames.add(username);
 		user_watchlists.put(username, new HashSet<>(watchlist));
 		return "User " + username + " added.";
 	}
